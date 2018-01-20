@@ -15,11 +15,15 @@
 #define mqtt_user "albe"
 #define mqtt_password "albe"
 
-#define humidity_topic "home-assistant/esp8266_hum"
-#define temperature_topic "home-assistant/esp8266_temp"
+#define humidity_topic "home-assistant/forradet_ute_hum"
+#define temperature_topic "home-assistant/forradet_ute_temp"
+#define pir_topic "home-assistant/forradet/pir/state"
 
 #define DHTTYPE DHT22
 #define DHTPIN  4
+
+#define PIR_PIN 5
+
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -47,7 +51,17 @@ void setup_wifi() {
 
 void setup() {
   Serial.begin(115200);
-  Serial.print("setup..");
+  // Wait for serial to initialize.
+  while (!Serial) { }
+  Serial.println("Device Started");
+  Serial.println("-------------------------------------");
+  Serial.print("Running setup..");
+  // Set pir pin as input
+  pinMode(PIR_PIN, INPUT);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  
   dht.begin();
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -90,11 +104,11 @@ void loop() {
     reconnect();
   }
   client.loop();
-
+  digitalRead(PIR_PIN);
   long now = millis();
-  if (now - lastMsg > 2000) {
+  if (now - lastMsg > 1500) {
     lastMsg = now;
-
+    
     float newTemp = dht.readTemperature();
     float newHum = dht.readHumidity();
 
@@ -111,5 +125,20 @@ void loop() {
       Serial.println(String(hum).c_str());
       client.publish(humidity_topic, String(hum).c_str(), true);
     }
+    digitalWrite(LED_BUILTIN, LOW);   
+    delay(250);                      // Wait for a second
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(250);
+    digitalWrite(LED_BUILTIN, LOW);   
+    delay(250);                      // Wait for a second
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+  else if (digitalRead(PIR_PIN)) {
+    Serial.print("PIR triggered, publishing to HASSIO\r\n");
+    client.publish(pir_topic, "on", true);
+    digitalWrite(LED_BUILTIN, LOW);   
+    delay(1000);                      // Wait for a second
+    digitalWrite(LED_BUILTIN, HIGH);
+    client.publish(pir_topic, "off", true);
   }
 }

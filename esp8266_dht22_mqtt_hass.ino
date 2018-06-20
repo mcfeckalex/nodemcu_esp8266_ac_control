@@ -11,7 +11,7 @@
 #define wifi_ssid "HumleBo"
 #define wifi_password "HumleBo2014!"
 
-#define mqtt_server "192.168.1.80"
+#define mqtt_server "192.168.1.111"
 #define mqtt_user "albe"
 #define mqtt_password "albe"
 
@@ -97,7 +97,7 @@ long lastMsg = 0;
 float temp = 0.0;
 float hum = 0.0;
 float diff = 1.0;
-
+bool pir_high = false;
 void loop() {
   
   if (!client.connected()) {
@@ -134,11 +134,24 @@ void loop() {
     digitalWrite(LED_BUILTIN, HIGH);
   }
   else if (digitalRead(PIR_PIN)) {
-    Serial.print("PIR triggered, publishing to HASSIO\r\n");
-    client.publish(pir_topic, "on", true);
-    digitalWrite(LED_BUILTIN, LOW);   
-    delay(1000);                      // Wait for a second
-    digitalWrite(LED_BUILTIN, HIGH);
-    client.publish(pir_topic, "off", true);
+    
+    if (!pir_high){
+      pir_high =true;
+      Serial.print("PIR triggered, publishing to HASSIO\r\n");
+      client.publish(pir_topic, "on", true);
+      digitalWrite(LED_BUILTIN, LOW);   
+      delay(1000);                      // Wait for a second
+      digitalWrite(LED_BUILTIN, HIGH);
+      }
+    
+  }
+  else if (!digitalRead(PIR_PIN))
+  {
+    if (pir_high){
+      pir_high=false;
+      Serial.print("PIR goes low, publishing to HASSIO\r\n");
+      client.publish(pir_topic, "off", true);
+      
+    }
   }
 }
